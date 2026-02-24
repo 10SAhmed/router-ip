@@ -43,20 +43,20 @@ Each packet is composed of 32-bit words.
 
 ### 3.1 Header Word Format
 ```
-| DEST[2:0] | SIZE[5:0] | PAYLOAD[22:0] |
+| DA[1:0] | SIZE[5:0] | PAYLOAD[22:0] |
 ```
 #### Field Definitions
-| Field   | Width          | Description                                                     |
-| ------- | -------------- | --------------------------------------------------------------- |
-| DEST    |  3 bits        |  Destination field (Reserved in v1.0 – not functionally checked)|
-| SIZE    |  6 bits        |  Number of payload words following the header                   |
-| PAYLOAD | 23 bits &nbsp; | User-defined payload data                                       |
+| Field   | Width          | Description                                                      |
+| ------- | -------------- | ---------------------------------------------------------------- |
+| DA      |  2 bits        | Destination Address (Reserved in v1.0 – not functionally checked)|
+| SIZE    |  6 bits        | Number of payload words following the header                     |
+| PAYLOAD | 23 bits &nbsp; | User-defined payload data                                        |
 
 **Notes**
 
-- SIZE defines the number of payload words after the header.
+- `SIZE` defines the number of payload words after the header.
 - Maximum payload size = 63 words.
-- DEST field is reserved for future multi-output versions and is not interpreted in v1.0.
+- `DA` field is reserved for future multi-output versions and is not interpreted in v1.0.
 
 ---
 
@@ -65,35 +65,35 @@ Each packet is composed of 32-bit words.
 
 Each of the four input ports includes:
 
-| Signal        | Direction | Description                   |
-| ------------- | --------- | ----------------------------- |
-| clk           | Input     | System clock                  | 
-| rst           | Input     | Active-high synchronous reset |
-| in_valid      | Input     | Indicates valid input word    |
-| in_data[31:0] | Input     | Input data word               |
-| in_sop        | Input     | Indicates start of packet     |
-| in_ready      | Output    | Router ready to accept data   |
+| Signal       | Direction | Description                   |
+| ------------ | --------- | ----------------------------- |
+| clk_i        | Input     | System clock                  | 
+| rst_i        | Input     | Active-high synchronous reset |
+| valid_i      | Input     | Indicates valid input word    |
+| data_i[31:0] | Input     | Input data word               |
+| start_i      | Input     | Indicates start of packet     |
+| ready_o      | Output    | Router ready to accept data   |
 
 ##### Input Protocol Rules
 
-- Packet begins when in_valid and in_sop are asserted together.
+- Packet begins when `valid_i` and `start_i` are asserted together.
 - First word must be the header.
 - Following words are payload words.
 - Total payload count must match SIZE field.
-- Data transfer occurs when `in_valid && in_ready`.
+- Data transfer occurs when `valid_i && ready_o`.
 
 ### 4.2 Output Interface
 
 | Signal         | Direction | Description               |
 | -------------- | --------- | ------------------------- |
-| out_valid      | Output    | Output data valid         |
-| out_data[31:0] | Output    | Output data word          |
-| out_sop        | Output    | Start-of-packet indicator |
-| out_ready      | Input     | Downstream ready          |
+| valid_o        | Output    | Output data valid         |
+| data_o[31:0]   | Output    | Output data word          |
+| sop_o          | Output    | Start-of-packet indicator |
+| ready_i        | Input     | Downstream ready          |
 
 #### Output Protocol Rules
 
-- Data transfer occurs when `out_valid && out_ready`.
+- Data transfer occurs when `valid_o && ready_i`.
 - Packets are transmitted in the same order as selected by the arbiter.
 - No packet interleaving is allowed.
 
@@ -110,7 +110,7 @@ Each of the four input ports includes:
 
 - FIFO asserts full when capacity reached.
 - FIFO asserts empty when no data present.
-- Input backpressure (`in_ready`) is de-asserted when FIFO is full.
+- Input backpressure (`ready_o`) is de-asserted when FIFO is full.
 - FIFO must store entire packet including header.
 
 ---
@@ -136,7 +136,7 @@ Port 0 > Port 1 > Port 2 > Port 3
 
 ## 7. Reset Behavior
 
-When `rst = 1`:
+When `rst_i = 1`:
 
 - All FIFOs are cleared.
 - Output signals are de-asserted.
@@ -174,7 +174,7 @@ PRIORITY_MODE  = FIXED
 
 ## 10. Assumptions
 
-- Downstream block eventually asserts `out_ready`.
+- Downstream block eventually asserts `ready_i`.
 - `SIZE` field is assumed valid in v1.0 (no enforcement).
 - Input packets are well-formed.
 
