@@ -32,13 +32,29 @@ module fifo_sc_tb ();
     ren <= 1'b0;
     repeat (5) @(posedge clk);
     rst <= 1'b0;
+    $display("Start writing till full %0t", $time());
     while (!full) begin
       wen <= 1'b1;
       data_in <= $urandom_range(0,D_WIDTH**2-1);
       @(posedge clk);
     end
+
+    $display("Start reading till empty %0t", $time());
     while (!empty) begin
       wen <= 1'b0;
+      ren <= 1'b1;
+      @(posedge clk);
+    end
+
+    $display("Doing nothing %0t", $time());
+      wen <= 1'b0;
+      ren <= 1'b0;
+    repeat (10) @(posedge clk);
+
+    $display("Start read write at the same time %0t", $time());
+    repeat (100) begin
+      wen <= 1'b1;
+      data_in <= $urandom_range(0,D_WIDTH**2-1);
       ren <= 1'b1;
       @(posedge clk);
     end
