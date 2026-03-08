@@ -11,7 +11,7 @@ module router_top #(
   input  logic [NUM_INPUTS-1:0]                 valid_i, // per port data validation signal
   input  logic [NUM_INPUTS-1:0][DATA_WIDTH-1:0] data_i , // per port data stream
   input  logic [NUM_INPUTS-1:0]                 start_i, // per port start of packet indicator
-  output logic [NUM_INPUTS-1:0]                 ready_o, // per port DUT is ready signal
+  output logic [NUM_INPUTS-1:0]                 ready_o, // p'd0ort DUT is ready signal
   // Egress Interface
   output logic                                  valid_o, // data validation signal
   output logic [DATA_WIDTH-1:0]                 data_o , // data stream
@@ -26,25 +26,29 @@ module router_top #(
   bit [NUM_INPUTS-1:0] empty;
   bit [NUM_INPUTS-1:0] grant;
 
-  logic [NUM_INPUTS-1:0][DATA_WIDTH-1:0] selected_data_o ;
-  logic [NUM_INPUTS-1:0]                 selected_start_o;
+  bit get_access;
 
   logic [NUM_INPUTS-1:0] active_fifo;
   logic [           1:0] dest       ;
   logic [           5:0] size       ;
   logic [           5:0] size_next  ;
+  logic [NUM_INPUTS-1:0] empty_mask ;
 
-  bit get_access;
+  logic [NUM_INPUTS-1:0]                 selected_start_o;
+  logic [NUM_INPUTS-1:0][DATA_WIDTH-1:0] selected_data_o ;
 
   // FSM States
-  localparam IDLE = 0;
-  localparam SEND = 1;
+  typedef enum logic [0:0] {
+    IDLE,
+    SEND
+  } state_t;
 
   // FSM variables
-  logic state, next_state;
+  state_t state, next_state;
 
+  // FIFO logic
   assign wen = valid_i & ready_o;
-  assign ren = {NUM_INPUTS{ready_i}} & active_fifo & {NUM_INPUTS{(state == SEND)}} & ~empty;
+  assign ren = {NUM_INPUTS{valid_o && ready_i}} & active_fifo;
 
   // per port FIFO
   genvar i;
@@ -64,15 +68,19 @@ module router_top #(
     end
   endgenerate
 
+  // Arbiter logic
+  assign empty_mask = empty | ~{NUM_INPUTS{get_access}};
+
   arbiter #(.NUM_INPUTS(NUM_INPUTS), .PRIORITY_MODE(PRIORITY_MODE)) arbiter_inst (
-    .fifo_empty(get_access & empty),
-    .grant     (grant)
+    .fifo_empty(empty_mask),
+    .grant     (grant     )
   );
 
   always_comb begin
-    data_o = '0;
+    data_o  = '0;
     start_o = 1'b0;
     valid_o = 1'b0;
+    ready_o = ~full;
     for (int i = 0; i < NUM_INPUTS; i++) begin
       if (active_fifo[i]) begin
         data_o  = selected_data_o[i];
@@ -88,7 +96,7 @@ module router_top #(
       dest <= 'd0;
       size <= 'd0;
     end else if (state == SEND) begin
-      if (start_o) begin  // checking MSB of rdata for start bit
+      if (start_o && valid_o && ready_i) begin  // checking MSB of rdata for start bit
         dest <= data_o[1:0];
         size <= data_o[7:2];
       end else begin
@@ -100,7 +108,7 @@ module router_top #(
   always_ff @(posedge clk_i) begin
     if(rst_i) begin
       active_fifo <= 0;
-    end else if (next_state == SEND) begin  // if grant accessed then latched the fifo
+    end else if (state == IDLE && next_state == SEND) begin  // if grant accessed then latched the fifo
       active_fifo <= grant;
     end
   end
@@ -116,6 +124,10 @@ module router_top #(
 
 
   always_comb begin
+    next_state = state;
+    size_next  = size;
+    get_access = 1'b0;
+
     case (state)
       IDLE : begin
         get_access = 1'b1;
@@ -123,10 +135,11 @@ module router_top #(
       end
       SEND : begin
         get_access = 1'b0;
-        if (size == 6'h01) begin
+        if (size == 6'h01 && valid_o && ready_i) begin
           next_state = IDLE;
-        end else begin
-          size_next = size - (valid_o && ready_i);
+          size_next  = size - 1'b1;  // if only 1 byte, then decrement counter and update state
+        end else if (size > 6'h00 && valid_o && ready_i) begin
+          size_next = size - 1'b1;
         end
       end
 
