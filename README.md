@@ -36,4 +36,3 @@ All mentioned in **V3** and:
 All mentioned in **V4** and:
 
 - Multi-clock functionality.
->>>>>>> main
