@@ -39,18 +39,22 @@ The arbiter selects one FIFO at a time and forwards its packet to the output.
 
 ## 3. Packet Format
 
-Each packet is composed of 32-bit words.
+Each packet is composed of 8-bit words (beats). The fisrt word constains the packet header. Rest of the words contain data payload. 
 
-### 3.1 Header Word Format
+<pre>
+| PACKET HEADER | DATA BEAT 0 | DATA BEAT 1 | DATA BEAT 2 | ... | DATA BEAT <b>SIZE</b> | 
+</pre>
+
+### 3.2 Header Word Format
 ```
-| DA[1:0] | SIZE[5:0] | PAYLOAD[22:0] |
+| DA[1:0] | SIZE[7:2] |
 ```
+
 #### Field Definitions
 | Field   | Width          | Description                                                      |
 | ------- | -------------- | ---------------------------------------------------------------- |
 | DA      |  2 bits        | Destination Address (Reserved in v1.0 – not functionally checked)|
 | SIZE    |  6 bits        | Number of payload words following the header                     |
-| PAYLOAD | 23 bits &nbsp; | User-defined payload data                                        |
 
 **Notes**
 
@@ -65,14 +69,14 @@ Each packet is composed of 32-bit words.
 
 Each of the four input ports includes:
 
-| Signal       | Direction | Description                   |
-| ------------ | --------- | ----------------------------- |
-| clk_i        | Input     | System clock                  | 
-| rst_i        | Input     | Active-high synchronous reset |
-| valid_i      | Input     | Indicates valid input word    |
-| data_i[31:0] | Input     | Input data word               |
-| start_i      | Input     | Indicates start of packet     |
-| ready_o      | Output    | Router ready to accept data   |
+| Signal      | Direction | Description                   |
+| ----------- | --------- | ----------------------------- |
+| clk_i       | Input     | System clock                  | 
+| rst_i       | Input     | Active-high synchronous reset |
+| valid_i     | Input     | Indicates valid input word    |
+| data_i[7:0] | Input     | Input data word               |
+| start_i     | Input     | Indicates start of packet     |
+| ready_o     | Output    | Router ready to accept data   |
 
 ##### Input Protocol Rules
 
@@ -84,12 +88,12 @@ Each of the four input ports includes:
 
 ### 4.2 Output Interface
 
-| Signal         | Direction | Description               |
-| -------------- | --------- | ------------------------- |
-| valid_o        | Output    | Output data valid         |
-| data_o[31:0]   | Output    | Output data word          |
-| sop_o          | Output    | Start-of-packet indicator |
-| ready_i        | Input     | Downstream ready          |
+| Signal        | Direction | Description               |
+| ------------- | --------- | ------------------------- |
+| valid_o       | Output    | Output data valid         |
+| data_o[7:0]   | Output    | Output data word          |
+| sop_o         | Output    | Start-of-packet indicator |
+| ready_i       | Input     | Downstream ready          |
 
 #### Output Protocol Rules
 
@@ -165,8 +169,11 @@ These features are reserved for future versions.
 The following parameters shall be configurable:
 ```
 NUM_INPUTS     = 4
-DATA_WIDTH     = 32
 FIFO_DEPTH     = 8
+```
+Though following parameters exist but may not work for v1.0. It is recommended to not change them
+```
+DATA_WIDTH     = 8
 PRIORITY_MODE  = FIXED
 ```
 
