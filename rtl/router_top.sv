@@ -11,7 +11,7 @@ module router_top #(
   input  logic [NUM_INPUTS-1:0]                 valid_i, // per port data validation signal
   input  logic [NUM_INPUTS-1:0][DATA_WIDTH-1:0] data_i , // per port data stream
   input  logic [NUM_INPUTS-1:0]                 start_i, // per port start of packet indicator
-  output logic [NUM_INPUTS-1:0]                 ready_o, // p'd0ort DUT is ready signal
+  output logic [NUM_INPUTS-1:0]                 ready_o, // per port DUT is ready signal
   // Egress Interface
   output logic                                  valid_o, // data validation signal
   output logic [DATA_WIDTH-1:0]                 data_o , // data stream
